@@ -20,13 +20,17 @@ Class private methods
 
 const self = {
 	get: (path, sessionId, tryParse = true, params) => new Promise((resolve, reject) => {
-		params = JSON.stringify({ __a: sessionId ? '1' : undefined, ...params });
+		params = JSON.stringify({ __a: sessionId ? '1&__d=dis' : undefined, ...params });
 		const url = insta + path + ((params !== '{}') ? ('/?' + querystring(JSON.parse(params))) : (tryParse ? '/' : ''));
+
+
 		https.get(url, {
 			headers: {
-				cookie: sessionId ? `sessionid=${sessionId}` : ''
+				cookie: `sessionid=${sessionId}; ds_user_id=brunnofuzil`
+				
 			}
 		}, res => {
+	
 			let body = '';
 			res.on('data', chunk => body += chunk);
 			res.on('end', () => {
@@ -306,15 +310,13 @@ module.exports = class Insta {
 		const
 			{
 				Consumer,
-				ConsumerLibCommons,
 				TagPageContainer,
-				LocationPageContainer,
+				LocationPageContainer
 			} = Object.fromEntries([
 				...(await self.get('', this.sessionId, false, { __a: undefined }))
 					.matchAll(/static\/bundles\/.+?\/(.+?)\.js\/.+?\.js/g)
 			].map(_ => _.reverse())),
 			mainScriptBody = await self.get(Consumer, undefined, false),
-			secondaryScriptBody = await self.get(ConsumerLibCommons, undefined, false),
 			hashtagScriptBody = await self.get(TagPageContainer, undefined, false),
 			locationScriptBody = await self.get(LocationPageContainer, undefined, false),
 			localQueryIdRegex = /queryId:"([^"]+)"/;
@@ -325,9 +327,8 @@ module.exports = class Insta {
 			[, post]
 		] = [...mainScriptBody.matchAll(/queryId:"([^"]+)"/g)];
 		this.queryHashs = {
-			// story: mainScriptBody.match(/50,[a-zA-Z]="([^"]+)",/)[1],
-			anyPost: mainScriptBody.match(/RETRY_TEXT.+var [a-zA-Z]="([^"]+)",/)[1],
-			post: secondaryScriptBody.match(/queryId:"([^"]+)"/)[1],
+			story: mainScriptBody.match(/50,[a-zA-Z]="([^"]+)",/)[1],
+			post,
 			comment,
 			hashtag: hashtagScriptBody.match(localQueryIdRegex)[1],
 			location: locationScriptBody.match(localQueryIdRegex)[1]
@@ -465,20 +466,11 @@ module.exports = class Insta {
 			}
 		);
 	}
-	getPost(shortcode, { useGraphQL = false } = {}){
+	getPost(shortcode){
 		return new Promise((resolve, reject) => {
-			if(useGraphQL){
-				this._getQueryHashs().then(queryHashs => {
-					self.graphQL({ shortcode }, queryHashs.anyPost, this.sessionId)
-						.then(data => resolve(self.fullPost(data['shortcode_media'])))
-						.catch(reject);
-				});
-			}
-			else {
-				self.get(`p/${shortcode}`, this.sessionId)
-					.then(post => resolve(self.fullPost(post)))
-					.catch(reject);
-			}
+			self.get(`p/${shortcode}`, this.sessionId)
+				.then(post => resolve(self.fullPost(post)))
+				.catch(reject);
 		});
 	}
 	async getPostComments(shortcode, maxCount, pageId){
