@@ -26,7 +26,7 @@ const self = {
 
 		https.get(url, {
 			headers: {
-				cookie: `sessionid=${sessionId}; ds_user_id=brunnokklk`
+				cookie: `sessionid=${sessionId}; ds_user_id=brunnodopassate`
 				
 			}
 		}, res => {
